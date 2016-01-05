@@ -46,7 +46,6 @@
 #define stPassword        CTRL_STATIC("stPassword")
 #define txtPassword       CTRL_TEXT("txtPassword")
 #define txtDbRestriction  CTRL_TEXT("txtDbRestriction")
-#define colourPicker      CTRL_COLOURPICKER("colourPicker")
 #define cbGroup           CTRL_COMBOBOX("cbGroup")
 #define pickerSSLCert     CTRL_FILEPICKER("pickerSSLCert")
 #define pickerSSLKey      CTRL_FILEPICKER("pickerSSLKey")
@@ -85,7 +84,6 @@ BEGIN_EVENT_TABLE(dlgServer, dlgProperty)
 	EVT_CHECKBOX(XRCID("chkStorePwd"),                 dlgProperty::OnChange)
 	EVT_CHECKBOX(XRCID("chkRestore"),                  dlgProperty::OnChange)
 	EVT_CHECKBOX(XRCID("chkTryConnect"),               dlgServer::OnChangeTryConnect)
-	EVT_COLOURPICKER_CHANGED(XRCID("colourPicker"),    dlgServer::OnChangeColour)
 	EVT_FILEPICKER_CHANGED(XRCID("pickerSSLCert"),     dlgServer::OnChangeFile)
 	EVT_FILEPICKER_CHANGED(XRCID("pickerSSLKey"),      dlgServer::OnChangeFile)
 	EVT_FILEPICKER_CHANGED(XRCID("pickerSSLRootCert"), dlgServer::OnChangeFile)
@@ -249,9 +247,6 @@ void dlgServer::OnOK(wxCommandEvent &ev)
 		server->SetPublicKeyFile(pickerPublicKeyFile->GetPath());
 		server->SetIdentityFile(pickerIdentityFile->GetPath());
 #endif
-		wxColour colour = colourPicker->GetColour();
-		wxString sColour = colour.GetAsString(wxC2S_HTML_SYNTAX);
-		server->iSetColour(sColour);
 		if (cbGroup->GetValue().IsEmpty())
 			cbGroup->SetValue(_("Servers"));
 		if (server->GetGroup() != cbGroup->GetValue())
@@ -369,12 +364,6 @@ void dlgServer::OnOK(wxCommandEvent &ev)
 }
 
 
-void dlgServer::OnChangeColour(wxColourPickerEvent &ev)
-{
-	dlgProperty::OnChange(ev);
-}
-
-
 void dlgServer::OnChangeFile(wxFileDirPickerEvent &ev)
 {
 	dlgProperty::OnChange(ev);
@@ -468,7 +457,6 @@ int dlgServer::Go(bool modal)
 		txtRolename->SetValue(server->GetRolename());
 		chkRestore->SetValue(server->GetRestore());
 		txtDbRestriction->SetValue(server->GetDbRestriction());
-		colourPicker->SetColour(server->GetColour());
 		cbGroup->SetValue(server->GetGroup());
 
 		pickerSSLCert->SetPath(server->GetSSLCert());
@@ -519,7 +507,6 @@ int dlgServer::Go(bool modal)
 			txtRolename->Disable();
 			chkRestore->Disable();
 			txtDbRestriction->Disable();
-			colourPicker->Disable();
 			cbGroup->Disable();
 			pickerSSLCert->Disable();
 			pickerSSLKey->Disable();
@@ -546,8 +533,6 @@ int dlgServer::Go(bool modal)
 	{
 		SetTitle(_("Add server"));
 		cbGroup->SetValue(_("Servers"));
-		wxString colour = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW).GetAsString(wxC2S_HTML_SYNTAX);
-		colourPicker->SetColour(colour);
 	}
 
 	// Call CheckRange to set state on OK button
@@ -580,7 +565,7 @@ pgObject *dlgServer::CreateObject(pgCollection *collection)
 		                   txtUsername->GetValue(), StrToLong(txtPort->GetValue()),
 		                   chkTryConnect->GetValue() && chkStorePwd->GetValue(),
 		                   txtRolename->GetValue(), chkRestore->GetValue(), cbSSL->GetCurrentSelection(),
-		                   colourPicker->GetColourString(), cbGroup->GetValue(),
+		                   wxEmptyString, cbGroup->GetValue(),
 		                   chkSSHTunnel->GetValue(), txtTunnelHost->GetValue(), txtTunnelUsername->GetValue(),
 		                   radioBtnPassword->GetValue(),
 		                   txtTunnelPassword->GetValue(), pickerPublicKeyFile->GetPath(),
@@ -594,7 +579,7 @@ pgObject *dlgServer::CreateObject(pgCollection *collection)
 		                   txtUsername->GetValue(), StrToLong(txtPort->GetValue()),
 		                   chkTryConnect->GetValue() && chkStorePwd->GetValue(),
 		                   txtRolename->GetValue(), chkRestore->GetValue(), cbSSL->GetCurrentSelection(),
-		                   colourPicker->GetColourString(), cbGroup->GetValue());
+		                   wxEmptyString, cbGroup->GetValue());
 	}
 
 	obj->iSetDbRestriction(txtDbRestriction->GetValue().Trim());
@@ -624,16 +609,6 @@ void dlgServer::CheckChange()
 
 	if (server)
 	{
-		// Get old value
-		wxColour colour;
-		wxString sColour = wxEmptyString;
-
-		if (colour.Set(server->GetColour()))
-			sColour = colour.GetAsString(wxC2S_HTML_SYNTAX);
-
-		// Get new value
-		wxString sColour2 = colourPicker->GetColourString();
-
 		enable =  name != server->GetName()
 		          || txtHostAddr->GetValue() != server->GetHostAddr()
 		          || txtDescription->GetValue() != server->GetDescription()
@@ -647,7 +622,6 @@ void dlgServer::CheckChange()
 		          || txtRolename->GetValue() != server->GetRolename()
 		          || chkRestore->GetValue() != server->GetRestore()
 		          || txtDbRestriction->GetValue() != server->GetDbRestriction()
-		          || sColour != sColour2
 		          || cbGroup->GetValue() != server->GetGroup()
 		          || pickerSSLCert->GetPath() != server->GetSSLCert()
 		          || pickerSSLKey->GetPath() != server->GetSSLKey()

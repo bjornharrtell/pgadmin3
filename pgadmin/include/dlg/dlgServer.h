@@ -14,7 +14,6 @@
 #define __DLG_SERVERPROP
 
 #include "dlg/dlgProperty.h"
-#include <wx/clrpicker.h>
 #include <wx/filepicker.h>
 
 class pgServer;
@@ -44,7 +43,6 @@ private:
 	void OnChangeRestr(wxCommandEvent &ev);
 	void OnChangeTryConnect(wxCommandEvent &ev);
 	void OnPageSelect(wxNotebookEvent &event);
-	void OnChangeColour(wxColourPickerEvent &ev);
 	void OnChangeFile(wxFileDirPickerEvent &ev);
 
 #if defined(HAVE_OPENSSL_CRYPTO) || defined(HAVE_GCRYPT)

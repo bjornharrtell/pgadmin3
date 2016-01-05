@@ -1527,7 +1527,6 @@ pgObject *pgServerFactory::CreateObjects(pgCollection *obj, ctlTree *browser, co
 		settings->Read(key + wxT("LastDatabase"), &lastDatabase, wxEmptyString);
 		settings->Read(key + wxT("LastSchema"), &lastSchema, wxEmptyString);
 		settings->Read(key + wxT("DbRestriction"), &dbRestriction, wxEmptyString);
-		settings->Read(key + wxT("Colour"), &colour, wxEmptyString);
 		settings->Read(key + wxT("Group"), &group, wxT("Servers"));
 		settings->Read(key + wxT("SSLCert"), &sslcert, wxEmptyString);
 		settings->Read(key + wxT("SSLKey"), &sslkey, wxEmptyString);
@@ -1543,18 +1542,6 @@ pgObject *pgServerFactory::CreateObjects(pgCollection *obj, ctlTree *browser, co
 		settings->Read(key + wxT("IdentityFile"), &identityFile, wxEmptyString);
 		settings->Read(key + wxT("TunnelPort"), &tunnelPort, DEFAULT_SSH_PORT);
 #endif
-		// Sanitize the colour
-		colour = colour.Trim();
-
-		if (!colour.IsEmpty())
-		{
-			wxColour cColour;
-
-			if (cColour.Set(colour))
-				colour = cColour.GetAsString(wxC2S_HTML_SYNTAX);
-			else
-				colour = wxEmptyString;
-		}
 
 		if (colour.IsEmpty())
 		{
