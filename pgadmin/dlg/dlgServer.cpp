@@ -355,7 +355,6 @@ void dlgServer::OnOK(wxCommandEvent &ev)
 
 		mainForm->execSelChange(server->GetId(), true);
 		mainForm->GetBrowser()->SetItemText(item, server->GetFullName());
-		mainForm->SetItemBackgroundColour(item, wxColour(server->GetColour()));
 		mainForm->StoreServers();
 	}
 

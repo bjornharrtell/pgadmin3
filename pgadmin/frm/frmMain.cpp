@@ -1383,22 +1383,6 @@ void frmMain::SetStatusText(const wxString &msg)
 	statusBar->SetStatusText(wxEmptyString, 2);
 }
 
-void frmMain::SetItemBackgroundColour(wxTreeItemId item, wxColour colour)
-{
-	wxTreeItemIdValue cookie;
-
-	browser->SetItemBackgroundColour(item, wxColour(colour));
-	if (browser->ItemHasChildren(item))
-	{
-		wxTreeItemId childitem = browser->GetFirstChild(item, cookie);
-		while (childitem)
-		{
-			SetItemBackgroundColour(childitem, colour);
-			childitem = browser->GetNextChild(item, cookie);
-		}
-	}
-}
-
 #if defined(HAVE_OPENSSL_CRYPTO) || defined(HAVE_GCRYPT)
 void frmMain::OnSSHTunnelEvent(wxCommandEvent &event)
 {

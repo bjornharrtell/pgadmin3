@@ -165,7 +165,6 @@ public:
 	void UpdateAllFavouritesList();
 	void UpdateAllMacrosList();
 
-	void SetItemBackgroundColour(wxTreeItemId item, wxColour colour);
 	wxString GetNodePath(wxTreeItemId node);
 	void ObjectBrowserRefreshing(bool refresh)
 	{

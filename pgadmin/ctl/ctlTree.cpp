@@ -217,51 +217,6 @@ pgCollection *ctlTree::GetParentCollection(wxTreeItemId id)
 	return 0;
 }
 
-
-void ctlTree::SetItemImage(const wxTreeItemId &item, int image, wxTreeItemIcon which)
-{
-	wxTreeCtrl::SetItemImage(item, image, which);
-
-	wxTreeItemData *data = GetItemData(item);
-
-	// Set the item colour
-	if (data)
-	{
-		if (((pgObject *)data)->GetMetaType() == PGM_SERVER)
-		{
-			if (!((pgServer *)data)->GetColour().IsEmpty())
-				SetItemBackgroundColour(item, wxColour(((pgServer *)data)->GetColour()));
-		}
-		else if (((pgObject *)data)->GetServer())
-		{
-			if (!((pgObject *)data)->GetServer()->GetColour().IsEmpty())
-				SetItemBackgroundColour(item, wxColour(((pgObject *)data)->GetServer()->GetColour()));
-		}
-	}
-}
-
-wxTreeItemId ctlTree::AppendItem(const wxTreeItemId &parent, const wxString &text, int image, int selImage, wxTreeItemData *data)
-{
-	wxTreeItemId itm = wxTreeCtrl::AppendItem(parent, text, image, selImage, data);
-
-	// Set the item colour
-	if (data)
-	{
-		if (((pgObject *)data)->GetMetaType() == PGM_SERVER)
-		{
-			if (!((pgServer *)data)->GetColour().IsEmpty())
-				SetItemBackgroundColour(itm, wxColour(((pgServer *)data)->GetColour()));
-		}
-		else if (((pgObject *)data)->GetServer())
-		{
-			if (!((pgObject *)data)->GetServer()->GetColour().IsEmpty())
-				SetItemBackgroundColour(itm, wxColour(((pgObject *)data)->GetServer()->GetColour()));
-		}
-	}
-
-	return itm;
-}
-
 wxTreeItemId ctlTree::AppendObject(pgObject *parent, pgObject *object)
 {
 	wxString label;
