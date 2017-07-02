@@ -29,9 +29,6 @@
 #include <wx/clipbrd.h>
 #include <wx/sysopt.h>
 
-// wxOGL
-#include <ogl/ogl.h>
-
 // Windows headers
 #ifdef __WXMSW__
 #include <winsock.h>
@@ -441,8 +438,6 @@ bool pgAdmin3::OnInit()
 	wxXmlResource::Get()->AddHandler(new ctlColourPickerXmlHandler);
 
 	InitXml();
-
-	wxOGLInitialize();
 
 	// Set some defaults
 	SetAppName(appearanceFactory->GetLongAppName());

@@ -30,7 +30,6 @@
 #include "frm/frmMain.h"
 #include "frm/frmQuery.h"
 #include "frm/menu.h"
-#include "ctl/explainCanvas.h"
 #include "db/pgConn.h"
 
 #include "ctl/ctlMenuToolbar.h"
@@ -40,10 +39,6 @@
 #include "dlg/dlgManageFavourites.h"
 #include "dlg/dlgManageMacros.h"
 #include "frm/frmReport.h"
-#include "gqb/gqbViewController.h"
-#include "gqb/gqbModel.h"
-#include "gqb/gqbViewPanels.h"
-#include "gqb/gqbEvents.h"
 #include "schema/pgDatabase.h"
 #include "schema/pgFunction.h"
 #include "schema/pgTable.h"
@@ -80,7 +75,6 @@
 #include "images/query_commit.pngc"
 #include "images/query_rollback.pngc"
 #include "images/help.pngc"
-#include "images/gqbJoin.pngc"
 
 #define CTRLID_CONNECTION       4200
 #define CTRLID_DATABASELABEL    4201
@@ -109,8 +103,6 @@ BEGIN_EVENT_TABLE(frmQuery, pgFrame)
 	EVT_MENU(MNU_SAVEAS,            frmQuery::OnSaveAs)
 	EVT_MENU(MNU_NEWSQLTAB,         frmQuery::OnSqlBookAddPage)
 	EVT_MENU(MNU_EXPORT,            frmQuery::OnExport)
-	EVT_MENU(MNU_SAVEAS_IMAGE_GQB,     frmQuery::SaveExplainAsImage)
-	EVT_MENU(MNU_SAVEAS_IMAGE_EXPLAIN, frmQuery::SaveExplainAsImage)
 	EVT_MENU(MNU_EXIT,              frmQuery::OnExit)
 	EVT_MENU(MNU_CUT,               frmQuery::OnCut)
 	EVT_MENU(MNU_COPY,              frmQuery::OnCopy)
@@ -147,7 +139,6 @@ BEGIN_EVENT_TABLE(frmQuery, pgFrame)
 	EVT_MENU(MNU_MACROS_MANAGE,     frmQuery::OnMacroManage)
 	EVT_MENU(MNU_DATABASEBAR,       frmQuery::OnToggleDatabaseBar)
 	EVT_MENU(MNU_TOOLBAR,           frmQuery::OnToggleToolBar)
-	EVT_MENU(MNU_SCRATCHPAD,        frmQuery::OnToggleScratchPad)
 	EVT_MENU(MNU_OUTPUTPANE,        frmQuery::OnToggleOutputPane)
 	EVT_MENU(MNU_DEFAULTVIEW,       frmQuery::OnDefaultView)
 	EVT_MENU(MNU_BLOCK_INDENT,      frmQuery::OnBlockIndent)
@@ -166,16 +157,13 @@ BEGIN_EVENT_TABLE(frmQuery, pgFrame)
 	EVT_STC_MODIFIED(CTL_SQLQUERY,  frmQuery::OnChangeStc)
 	EVT_STC_UPDATEUI(CTL_SQLQUERY,  frmQuery::OnPositionStc)
 	EVT_AUI_PANE_CLOSE(             frmQuery::OnAuiUpdate)
-	EVT_TIMER(CTL_TIMERSIZES,       frmQuery::OnAdjustSizesTimer)
 	EVT_TIMER(CTL_TIMERFRM,         frmQuery::OnTimer)
 // These fire when the queries complete
 	EVT_PGQUERYRESULT(QUERY_COMPLETE, frmQuery::OnQueryComplete)
 	EVT_MENU(PGSCRIPT_COMPLETE,     frmQuery::OnScriptComplete)
-	EVT_AUINOTEBOOK_PAGE_CHANGED(CTL_NTBKCENTER, frmQuery::OnChangeNotebook)
 	EVT_AUINOTEBOOK_PAGE_CHANGED(CTL_SQLQUERYBOOK, frmQuery::OnSqlBookPageChanged)
 	EVT_AUINOTEBOOK_PAGE_CHANGING(CTL_SQLQUERYBOOK, frmQuery::OnSqlBookPageChanging)
 	EVT_AUINOTEBOOK_PAGE_CLOSE(CTL_SQLQUERYBOOK, frmQuery::OnSqlBookPageClose)
-	EVT_SPLITTER_SASH_POS_CHANGED(GQB_HORZ_SASH, frmQuery::OnResizeHorizontally)
 	EVT_BUTTON(CTL_DELETECURRENTBTN, frmQuery::OnDeleteCurrent)
 	EVT_BUTTON(CTL_DELETEALLBTN,     frmQuery::OnDeleteAll)
 END_EVENT_TABLE()
@@ -245,8 +233,6 @@ frmQuery::frmQuery(frmMain *form, const wxString &_title, pgConn *_conn, const w
 	recentKey = wxT("RecentFiles");
 	RestorePosition(100, 100, 600, 500, 450, 300);
 
-	explainCanvas = NULL;
-
 	// notify wxAUI which frame to use
 	manager.SetManagedWindow(this);
 	manager.SetFlags(wxAUI_MGR_DEFAULT | wxAUI_MGR_TRANSPARENT_DRAG);
@@ -264,8 +250,6 @@ frmQuery::frmQuery(frmMain *form, const wxString &_title, pgConn *_conn, const w
 	fileMenu->Append(MNU_SAVE, _("&Save\tCtrl-S"),      _("Save current file"));
 	saveasImageMenu = new wxMenu();
 	saveasImageMenu->Append(MNU_SAVEAS, _("Query (text)"), _("Save file under new name"));
-	saveasImageMenu->Append(MNU_SAVEAS_IMAGE_GQB, _("Graphical Query (image)"), _("Save Graphical Query as an image"));
-	saveasImageMenu->Append(MNU_SAVEAS_IMAGE_EXPLAIN, _("Explain (image)"), _("Save output of Explain as an image"));
 	fileMenu->Append(wxID_ANY, _("Save as"), saveasImageMenu);
 
 	// SQL tabs related menu items
@@ -362,7 +346,6 @@ frmQuery::frmQuery(frmMain *form, const wxString &_title, pgConn *_conn, const w
 	viewMenu = new wxMenu();
 	viewMenu->Append(MNU_DATABASEBAR, _("&Connection bar\tCtrl-Alt-B"), _("Show or hide the database selection bar."), wxITEM_CHECK);
 	viewMenu->Append(MNU_OUTPUTPANE, _("&Output pane\tCtrl-Alt-O"), _("Show or hide the output pane."), wxITEM_CHECK);
-	viewMenu->Append(MNU_SCRATCHPAD, _("S&cratch pad\tCtrl-Alt-S"), _("Show or hide the scratch pad."), wxITEM_CHECK);
 	viewMenu->Append(MNU_TOOLBAR, _("&Tool bar\tCtrl-Alt-T"), _("Show or hide the tool bar."), wxITEM_CHECK);
 	viewMenu->AppendSeparator();
 	viewMenu->Append(MNU_SHOWINDENTGUIDES, _("&Indent guides"), _("Enable or disable display of indent guides"), wxITEM_CHECK);
@@ -522,27 +505,16 @@ frmQuery::frmQuery(frmMain *form, const wxString &_title, pgConn *_conn, const w
 	// Results pane
 	outputPane = new ctlAuiNotebook(this, CTL_NTBKGQB, wxDefaultPosition, wxSize(500, 300), wxAUI_NB_TOP | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE | wxAUI_NB_SCROLL_BUTTONS | wxAUI_NB_WINDOWLIST_BUTTON);
 	sqlResult = new ctlSQLResult(outputPane, conn, CTL_SQLRESULT, wxDefaultPosition, wxDefaultSize);
-	explainCanvas = new ExplainCanvas(outputPane);
 	msgResult = new wxTextCtrl(outputPane, CTL_MSGRESULT, wxT(""), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY | wxTE_DONTWRAP);
 	msgResult->SetFont(settings->GetSQLFont());
 	msgHistory = new wxTextCtrl(outputPane, CTL_MSGHISTORY, wxT(""), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY | wxTE_DONTWRAP);
 	msgHistory->SetFont(settings->GetSQLFont());
 
-	// Graphical Canvas
-	// initialize values
-	model = new gqbModel();
-	controller = new gqbController(model, sqlNotebook, outputPane, wxSize(GQB_MIN_WIDTH, GQB_MIN_HEIGHT));
-	firstTime = true;                             // Inform to GQB that the tree of table haven't filled.
-	gqbUpdateRunning = false;                      // Are we already updating the SQL query - event recursion protection.
-	adjustSizesTimer = NULL;                      // Timer used to avoid a bug when close outputPane
-
 	// Setup SQL editor notebook NBP_SQLEDTR
 	sqlNotebook->AddPage(pnlQuery, _("SQL Editor"));
-	sqlNotebook->AddPage(controller->getViewContainer(), _("Graphical Query Builder"));
 	sqlNotebook->SetSelection(0);
 
 	outputPane->AddPage(sqlResult, _("Data Output"));
-	outputPane->AddPage(explainCanvas, _("Explain"));
 	outputPane->AddPage(msgResult, _("Messages"));
 	outputPane->AddPage(msgHistory, _("History"));
 
@@ -550,14 +522,10 @@ frmQuery::frmQuery(frmMain *form, const wxString &_title, pgConn *_conn, const w
 	msgResult->Connect(wxID_ANY, wxEVT_SET_FOCUS, wxFocusEventHandler(frmQuery::OnFocus));
 	msgHistory->Connect(wxID_ANY, wxEVT_SET_FOCUS, wxFocusEventHandler(frmQuery::OnFocus));
 
-	// Now, the scratchpad
-	scratchPad = new wxTextCtrl(this, CTL_SCRATCHPAD, wxT(""), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxHSCROLL);
-
 	// Kickstart wxAUI
 	manager.AddPane(toolBar, wxAuiPaneInfo().Name(wxT("toolBar")).Caption(_("Tool bar")).ToolbarPane().Top().LeftDockable(false).RightDockable(false));
 	manager.AddPane(cbConnection, wxAuiPaneInfo().Name(wxT("databaseBar")).Caption(_("Connection bar")).ToolbarPane().Top().LeftDockable(false).RightDockable(false));
 	manager.AddPane(outputPane, wxAuiPaneInfo().Name(wxT("outputPane")).Caption(_("Output pane")).Bottom().MinSize(wxSize(200, 100)).BestSize(wxSize(550, 300)));
-	manager.AddPane(scratchPad, wxAuiPaneInfo().Name(wxT("scratchPad")).Caption(_("Scratch pad")).Right().MinSize(wxSize(100, 100)).BestSize(wxSize(250, 200)));
 	manager.AddPane(sqlNotebook, wxAuiPaneInfo().Name(wxT("sqlQuery")).Caption(_("SQL query")).Center().CaptionVisible(false).CloseButton(false).MinSize(wxSize(200, 100)).BestSize(wxSize(350, 200)));
 
 	// Now load the layout
@@ -570,14 +538,11 @@ frmQuery::frmQuery(frmMain *form, const wxString &_title, pgConn *_conn, const w
 	manager.GetPane(wxT("databaseBar")).Caption(_("Connection bar"));
 	manager.GetPane(wxT("sqlQuery")).Caption(_("SQL query"));
 	manager.GetPane(wxT("outputPane")).Caption(_("Output pane"));
-	manager.GetPane(wxT("scratchPad")).Caption(_("Scratch pad"));
-
 
 	// Sync the View menu options
 	viewMenu->Check(MNU_DATABASEBAR, manager.GetPane(wxT("databaseBar")).IsShown());
 	viewMenu->Check(MNU_TOOLBAR, manager.GetPane(wxT("toolBar")).IsShown());
 	viewMenu->Check(MNU_OUTPUTPANE, manager.GetPane(wxT("outputPane")).IsShown());
-	viewMenu->Check(MNU_SCRATCHPAD, manager.GetPane(wxT("scratchPad")).IsShown());
 
 	// tell the manager to "commit" all the changes just made
 	manager.Update();
@@ -672,21 +637,6 @@ frmQuery::~frmQuery()
 		delete sqlNotebook;
 		sqlNotebook = NULL;
 	}
-	if(controller)
-	{
-		delete controller;
-		controller = NULL;
-	}
-	if(model)
-	{
-		delete model;
-		model = NULL;
-	}
-	if(adjustSizesTimer)
-	{
-		delete adjustSizesTimer;
-		adjustSizesTimer = NULL;
-	}
 
 	while (cbConnection->GetCount() > 1)
 	{
@@ -739,16 +689,6 @@ void frmQuery::OnSize(wxSizeEvent &event)
 }
 
 
-void frmQuery::OnToggleScratchPad(wxCommandEvent &event)
-{
-	if (viewMenu->IsChecked(MNU_SCRATCHPAD))
-		manager.GetPane(wxT("scratchPad")).Show(true);
-	else
-		manager.GetPane(wxT("scratchPad")).Show(false);
-	manager.Update();
-}
-
-
 void frmQuery::OnToggleDatabaseBar(wxCommandEvent &event)
 {
 	if (viewMenu->IsChecked(MNU_DATABASEBAR))
@@ -780,7 +720,6 @@ void frmQuery::OnToggleOutputPane(wxCommandEvent &event)
 		manager.GetPane(wxT("outputPane")).Show(false);
 	}
 	manager.Update();
-	adjustGQBSizes();
 }
 
 
@@ -797,13 +736,6 @@ void frmQuery::OnAuiUpdate(wxAuiManagerEvent &event)
 	else if(event.pane->name == wxT("outputPane"))
 	{
 		viewMenu->Check(MNU_OUTPUTPANE, false);
-		if(!adjustSizesTimer)
-			adjustSizesTimer = new wxTimer(this, CTL_TIMERSIZES);
-		adjustSizesTimer->Start(500);
-	}
-	else if(event.pane->name == wxT("scratchPad"))
-	{
-		viewMenu->Check(MNU_SCRATCHPAD, false);
 	}
 	event.Skip();
 }
@@ -821,7 +753,6 @@ void frmQuery::OnDefaultView(wxCommandEvent &event)
 	manager.GetPane(wxT("databaseBar")).Caption(_("Connection bar"));
 	manager.GetPane(wxT("sqlQuery")).Caption(_("SQL query"));
 	manager.GetPane(wxT("outputPane")).Caption(_("Output pane"));
-	manager.GetPane(wxT("scratchPad")).Caption(_("Scratch pad"));
 
 	EndPerspectiveChange(false);
 
@@ -831,7 +762,6 @@ void frmQuery::OnDefaultView(wxCommandEvent &event)
 	viewMenu->Check(MNU_DATABASEBAR, manager.GetPane(wxT("databaseBar")).IsShown());
 	viewMenu->Check(MNU_TOOLBAR, manager.GetPane(wxT("toolBar")).IsShown());
 	viewMenu->Check(MNU_OUTPUTPANE, manager.GetPane(wxT("outputPane")).IsShown());
-	viewMenu->Check(MNU_SCRATCHPAD, manager.GetPane(wxT("scratchPad")).IsShown());
 }
 
 
@@ -1068,13 +998,6 @@ void frmQuery::OnChangeConnection(wxCommandEvent &ev)
 		pgScript->SetConnection(conn);
 		title = wxT("Query - ") + cbConnection->GetValue();
 		setExtendedTitle();
-
-		//Refresh GQB Tree if used
-		if(conn && !firstTime)
-		{
-			controller->getTablesBrowser()->refreshTables(conn);
-			controller->getView()->Refresh();
-		}
 	}
 }
 
@@ -1178,65 +1101,6 @@ void frmQuery::OnSaveHistory(wxCommandEvent &event)
 
 }
 
-void frmQuery::OnChangeNotebook(wxAuiNotebookEvent &event)
-{
-	// A bug in wxGTK prevents us to show a modal dialog within a
-	// EVT_AUINOTEBOOK_PAGE_CHANGED event
-	// So, we need these three lines of code to work-around it
-	wxWindow *win = wxWindow::GetCapture();
-	if (win)
-		win->ReleaseMouse();
-
-	if(sqlNotebook && sqlNotebook->GetPageCount() >= 2)
-	{
-
-		if (event.GetSelection() == 0)
-		{
-			queryMenu->SetHelpString(MNU_EXECUTE, _("Execute query"));
-			queryMenu->SetHelpString(MNU_EXECFILE, _("Execute query, write result to file"));
-			toolBar->SetToolShortHelp(MNU_EXECUTE, _("Execute query"));
-			toolBar->SetToolShortHelp(MNU_EXECFILE, _("Execute query, write result to file"));
-			viewMenu->Enable(MNU_OUTPUTPANE, true);
-			viewMenu->Enable(MNU_SCRATCHPAD, true);
-
-			// Reset the panes
-			if (viewMenu->IsChecked(MNU_OUTPUTPANE))
-				manager.GetPane(wxT("outputPane")).Show(true);
-			if (viewMenu->IsChecked(MNU_SCRATCHPAD))
-				manager.GetPane(wxT("scratchPad")).Show(true);
-			manager.Update();
-
-			updateFromGqb(false);
-		}
-		else
-		{
-			manager.GetPane(wxT("outputPane")).Show(false);
-			manager.GetPane(wxT("scratchPad")).Show(false);
-			manager.Update();
-			viewMenu->Enable(MNU_OUTPUTPANE, false);
-			viewMenu->Enable(MNU_SCRATCHPAD, false);
-
-			if(firstTime)        //Things that should be done on first click on GQB
-			{
-				// Menu
-				queryMenu->Append(MNU_EXECUTE, _("Generate SQL from Graphical Query Builder Model"));
-				queryMenu->SetHelpString(MNU_EXECFILE, _("Generate SQL from Graphical Query Builder Model"));
-				toolBar->SetToolShortHelp(MNU_EXECUTE, _("Generate SQL from Graphical Query Builder Model"));
-				toolBar->SetToolShortHelp(MNU_EXECFILE, _("Generate SQL from Graphical Query Builder Model"));
-
-				// Size, and pause to allow the window to draw
-				adjustGQBSizes();
-				wxTheApp->Yield(true);
-
-				// Database related Stuffs.
-				// Create a server object and connect it.
-				controller->getTablesBrowser()->refreshTables(conn);
-				firstTime = false;
-			}
-		}
-	}
-}
-
 
 void frmQuery::OnSetFocus(wxFocusEvent &event)
 {
@@ -1290,12 +1154,9 @@ wxWindow *frmQuery::currentControl()
 				wnd = sqlResult;
 				break;
 			case 1:
-				wnd = explainCanvas;
-				break;
-			case 2:
 				wnd = msgResult;
 				break;
-			case 3:
+			case 2:
 				wnd = msgHistory;
 				break;
 		}
@@ -1315,8 +1176,6 @@ void frmQuery::OnCopy(wxCommandEvent &ev)
 		msgResult->Copy();
 	else if (wnd == msgHistory)
 		msgHistory->Copy();
-	else if (wnd == scratchPad)
-		scratchPad->Copy();
 	else
 	{
 		wxWindow *obj = wnd;
@@ -1339,8 +1198,6 @@ void frmQuery::OnPaste(wxCommandEvent &ev)
 {
 	if (currentControl() == sqlQuery)
 		sqlQuery->Paste();
-	else if (currentControl() == scratchPad)
-		scratchPad->Paste();
 }
 
 
@@ -1360,8 +1217,6 @@ void frmQuery::OnClear(wxCommandEvent &ev)
 		msgHistory->Clear();
 		msgHistory->SetFont(settings->GetSQLFont());
 	}
-	else if (wnd == scratchPad)
-		scratchPad->Clear();
 }
 
 
@@ -1377,8 +1232,6 @@ void frmQuery::OnSelectAll(wxCommandEvent &ev)
 		msgHistory->SelectAll();
 	else if (wnd == sqlResult)
 		sqlResult->SelectAll();
-	else if (wnd == scratchPad)
-		scratchPad->SelectAll();
 	else if (wnd->GetParent() == sqlResult)
 		sqlResult->SelectAll();
 }
@@ -1445,7 +1298,6 @@ void frmQuery::updateMenu(bool allowUpdateModelSize)
 	bool canAddFavourite = false;
 	bool canManageFavourite = false;
 	bool canSaveExplain = false;
-	bool canSaveGQB = false;
 
 	wxAuiFloatingFrame *fp = wxDynamicCastThis(wxAuiFloatingFrame);
 	if (fp)
@@ -1454,16 +1306,6 @@ void frmQuery::updateMenu(bool allowUpdateModelSize)
 	if (closing)
 		return;
 
-	canSaveExplain = explainCanvas->GetDiagram()->GetCount() > 0;
-
-	if (allowUpdateModelSize)
-	{
-		canSaveGQB = controller->getView() != NULL && controller->getView()->canSaveAsImage();
-	}
-
-	saveasImageMenu->Enable(MNU_SAVEAS_IMAGE_GQB, canSaveGQB);
-	saveasImageMenu->Enable(MNU_SAVEAS_IMAGE_EXPLAIN, canSaveExplain);
-
 	wxWindow *wnd = currentControl();
 	if (wnd == NULL)
 		return;
@@ -1471,8 +1313,7 @@ void frmQuery::updateMenu(bool allowUpdateModelSize)
 	if (relatesToWindow(wnd, sqlQuery)
 	        || relatesToWindow(wnd, sqlResult)
 	        || relatesToWindow(wnd, msgResult)
-	        || relatesToWindow(wnd, msgHistory)
-	        || relatesToWindow(wnd, scratchPad))
+	        || relatesToWindow(wnd, msgHistory))
 	{
 		if (relatesToWindow(wnd, sqlQuery))
 		{
@@ -1482,10 +1323,6 @@ void frmQuery::updateMenu(bool allowUpdateModelSize)
 			canFind = true;
 			canAddFavourite = (sqlQuery->GetLength() > 0) && (settings->GetFavouritesFile().Length() > 0);
 			canManageFavourite = (settings->GetFavouritesFile().Length() > 0);
-		}
-		else if (relatesToWindow(wnd, scratchPad))
-		{
-			canPaste = true;
 		}
 		canCopy = true;
 		canCut = true;
@@ -1729,8 +1566,6 @@ void frmQuery::OnClose(wxCloseEvent &event)
 	// Reset the panes
 	if (viewMenu->IsChecked(MNU_OUTPUTPANE))
 		manager.GetPane(wxT("outputPane")).Show(true);
-	if (viewMenu->IsChecked(MNU_SCRATCHPAD))
-		manager.GetPane(wxT("scratchPad")).Show(true);
 	manager.Update();
 
 	Hide();
@@ -1738,8 +1573,6 @@ void frmQuery::OnClose(wxCloseEvent &event)
 	sqlResult->Disconnect(wxID_ANY, wxEVT_SET_FOCUS, wxFocusEventHandler(frmQuery::OnFocus));
 	msgResult->Disconnect(wxID_ANY, wxEVT_SET_FOCUS, wxFocusEventHandler(frmQuery::OnFocus));
 	msgHistory->Disconnect(wxID_ANY, wxEVT_SET_FOCUS, wxFocusEventHandler(frmQuery::OnFocus));
-
-	controller->nullView();                   //to avoid bug on *nix when deleting controller
 
 	settings->SetExplainVerbose(queryMenu->IsChecked(MNU_VERBOSE));
 	settings->SetExplainCosts(queryMenu->IsChecked(MNU_COSTS));
@@ -1773,9 +1606,6 @@ void frmQuery::OnChangeStc(wxStyledTextEvent &event)
 			SqlBookUpdatePageTitle();
 		}
 	}
-	// do not allow update of model size of GQB on input (key press) of each
-	// character of the query in Query Tool
-	updateMenu(false);
 }
 
 
@@ -2120,12 +1950,6 @@ void frmQuery::OnCancel(wxCommandEvent &event)
 
 void frmQuery::OnExplain(wxCommandEvent &event)
 {
-	if(sqlNotebook->GetSelection() == 1)
-	{
-		if (!updateFromGqb(true))
-			return;
-	}
-
 	wxString query = sqlQuery->GetSelectedText();
 	if (query.IsNull())
 		query = sqlQuery->GetText();
@@ -2197,95 +2021,21 @@ void frmQuery::OnExplain(wxCommandEvent &event)
 	execQuery(sql, resultToRetrieve, true, offset, false, true, verbose);
 }
 
+
 void frmQuery::OnCommit(wxCommandEvent &event)
 {
 	execQuery(wxT("COMMIT;"));
 }
+
 
 void frmQuery::OnRollback(wxCommandEvent &event)
 {
 	execQuery(wxT("ROLLBACK;"));
 }
 
-// Update the main SQL query from the GQB if desired
-bool frmQuery::updateFromGqb(bool executing)
-{
-	if (closing)
-		return false;
-
-	// Make sure this doesn't get call recursively through an event
-	if (gqbUpdateRunning)
-		return false;
-	updateMenu();
-
-	gqbUpdateRunning = true;
-
-	// Execute Generation of SQL sentence from GQB
-	bool canGenerate = false;
-	wxString newQuery = controller->generateSQL();
-
-	// If the new query is empty, don't do anything
-	if (newQuery.IsEmpty())
-	{
-		if (controller->getTableCount() > 0)
-		{
-			wxMessageBox(_("No SQL query was generated."), _("Graphical Query Builder"), wxICON_INFORMATION | wxOK);
-		}
-		gqbUpdateRunning = false;
-		return false;
-	}
-
-	// Only prompt the user if the dirty flag is set, and last modification wasn't from GQB,
-	// and the textbox is not empty, and the new query is different.
-	if (sqlQuery->IsChanged() && sqlQuery->GetOrigin() != ORIGIN_GQB &&
-	        !sqlQuery->GetText().Trim().IsEmpty() && sqlQuery->GetText() != newQuery + wxT("\n"))
-	{
-		wxString fn;
-		if (executing)
-			fn = _("The generated SQL query has changed.\nDo you want to update it and execute the query?");
-		else
-			fn = _("The generated SQL query has changed.\nDo you want to update it?");
-
-		wxMessageDialog msg(this, fn, _("Query"), wxYES_NO | wxICON_EXCLAMATION);
-		if(msg.ShowModal() == wxID_YES && sqlQuery->IsChanged())
-		{
-			canGenerate = true;
-		}
-		else
-		{
-			gqbUpdateRunning = false;
-		}
-	}
-	else
-	{
-		canGenerate = true;
-	}
-
-	if(canGenerate)
-	{
-		sqlQuery->SetText(newQuery + wxT("\n"));
-		sqlQuery->Colourise(0, sqlQuery->GetText().Length());
-		wxSafeYield();                            // needed to process sqlQuery modify event
-		sqlNotebook->SetSelection(0);
-		sqlQuery->SetChanged(true);
-		sqlQuery->SetOrigin(ORIGIN_GQB);
-		setExtendedTitle();
-
-		gqbUpdateRunning = false;
-		return true;
-	}
-
-	return false;
-}
 
 void frmQuery::OnExecute(wxCommandEvent &event)
 {
-	if(sqlNotebook->GetSelection() == 1)
-	{
-		if (!updateFromGqb(true))
-			return;
-	}
-
 	wxString query = sqlQuery->GetSelectedText();
 	if (query.IsNull())
 		query = sqlQuery->GetText();
@@ -2327,7 +2077,6 @@ void frmQuery::OnExecScript(wxCommandEvent &event)
 	queryMenu->Enable(MNU_CLEARHISTORY, true);
 
 	// Window stuff
-	explainCanvas->Clear();
 	msgResult->Clear();
 	msgResult->SetFont(settings->GetSQLFont());
 	outputPane->SetSelection(2);
@@ -2357,15 +2106,8 @@ void frmQuery::OnExecScript(wxCommandEvent &event)
 }
 
 
-
 void frmQuery::OnExecFile(wxCommandEvent &event)
 {
-	if(sqlNotebook->GetSelection() == 1)
-	{
-		if (!updateFromGqb(true))
-			return;
-	}
-
 	wxString query = sqlQuery->GetSelectedText();
 	if (query.IsNull())
 		query = sqlQuery->GetText();
@@ -2468,8 +2210,6 @@ void frmQuery::execQuery(const wxString &query, int resultToRetrieve, bool singl
 	setTools(true);
 	queryMenu->Enable(MNU_SAVEHISTORY, true);
 	queryMenu->Enable(MNU_CLEARHISTORY, true);
-
-	explainCanvas->Clear();
 
 	// Clear markers and indicators
 	sqlQuery->MarkerDeleteAll(0);
@@ -3157,7 +2897,6 @@ void frmQuery::completeQuery(bool done, bool explain, bool verbose)
 					str.Append(sqlResult->OnGetItemText(i, 0));
 				}
 			}
-			explainCanvas->SetExplainString(str);
 			outputPane->SetSelection(1);
 		}
 		updateMenu();
@@ -3203,56 +2942,10 @@ void frmQuery::OnTimer(wxTimerEvent &event)
 }
 
 
-// Adjust sizes of GQB components, Located here because need to
-// avoid some issues when implementing inside controller/view Classes
-void frmQuery::adjustGQBSizes()
-{
-	// Get Size (only height) from main Tab with GQB and SQL Editor and adjust the width
-	// to desiree, then set [Sash of tablesBrowser | GQB_Canvas]
-	manager.Update();
-	sqlNotebook->Refresh();
-	wxSize s = sqlNotebook->GetSize();
-	s.SetWidth(200);
-	s.SetHeight(s.GetHeight() - 180);      //re-adjust weight eliminating Horz Sash Position
-	controller->getTablesBrowser()->SetSize(s);
-	controller->setSashVertPosition(controller->getTablesBrowser()->GetSize().GetWidth());
-
-	// Now Adjust Sash Horizontal
-	s = sqlNotebook->GetSize();
-	controller->setSashHorizPosition(s.GetHeight() - 150);
-
-	// Adjust GQB grids internal columns sizes
-	controller->calcGridColsSizes();
-}
-
-
-// Adjust sizes of GQB components after vertical sash adjustment,
-// Located here because need to avoid some issues when implementing
-// inside controller/view Classes
-void frmQuery::OnResizeHorizontally(wxSplitterEvent &event)
-{
-	int y = event.GetSashPosition();
-	wxSize s = controller->getTablesBrowser()->GetSize();
-	s.SetHeight(y);               // re-adjust weight eliminating Horz Sash Position
-	controller->getTablesBrowser()->SetSize(s);
-}
-
-
-
-// This function adjust the GQB Components after an event on the wxAui
-// event, it's a workaround because need event finish to work properly
-void frmQuery::OnAdjustSizesTimer(wxTimerEvent &event)
-{
-	adjustGQBSizes();
-	adjustSizesTimer->Stop();
-}
-
 void frmQuery::OnBlockIndent(wxCommandEvent &event)
 {
 	if (FindFocus()->GetId() == CTL_SQLQUERY)
 		sqlQuery->CmdKeyExecute(wxSTC_CMD_TAB);
-	else if (FindFocus()->GetId() == CTL_SCRATCHPAD)
-		scratchPad->WriteText(wxT("\t"));
 }
 
 void frmQuery::OnBlockOutDent(wxCommandEvent &event)
@@ -4061,50 +3754,6 @@ bool queryToolInsertFactory::CheckEnable(pgObject *obj)
 	pgView *view = (pgView *)obj;
 
 	return view->HasInsertRule();
-}
-
-void frmQuery::SaveExplainAsImage(wxCommandEvent &ev)
-{
-	wxFileDialog *dlg = new wxFileDialog(this, _("Save Explain As image file"), lastDir, lastFilename,
-	                                     wxT("Bitmap files (*.bmp)|*.bmp|JPEG files (*.jpeg)|*.jpeg|PNG files (*.png)|*.png"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-	if (dlg->ShowModal() == wxID_OK)
-	{
-		lastFilename = dlg->GetFilename();
-		lastDir = dlg->GetDirectory();
-		lastPath = dlg->GetPath();
-		int index = dlg->GetFilterIndex();
-
-		wxString     strType;
-		wxBitmapType imgType;
-		switch (index)
-		{
-			// bmp
-			case 0:
-				strType = wxT(".bmp");
-				imgType = wxBITMAP_TYPE_BMP;
-				break;
-			// jpeg
-			case 1:
-				strType = wxT(".jpeg");
-				imgType = wxBITMAP_TYPE_JPEG;
-				break;
-			// default (png)
-			default:
-			// png
-			case 2:
-				strType = wxT(".png");
-				imgType = wxBITMAP_TYPE_PNG;
-				break;
-		}
-
-		if (!lastPath.Contains(wxT(".")))
-			lastPath += strType;
-
-		if (ev.GetId() == MNU_SAVEAS_IMAGE_GQB)
-			controller->getView()->SaveAsImage(lastPath, imgType);
-		else if (ev.GetId() == MNU_SAVEAS_IMAGE_EXPLAIN)
-			explainCanvas->SaveAsImage(lastPath, imgType);
-	}
 }
 
 ///////////////////////////////////////////////////////

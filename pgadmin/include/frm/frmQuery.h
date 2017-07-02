@@ -15,8 +15,6 @@
 #include "ctl/ctlAuiNotebook.h"
 #include "db/pgQueryResultEvent.h"
 #include "dlg/dlgClasses.h"
-#include "gqb/gqbViewController.h"
-#include "gqb/gqbModel.h"
 #include "frm/frmExport.h"
 #include "utils/factory.h"
 #include "utils/favourites.h"
@@ -126,7 +124,6 @@ private:
 	ctlSQLBox *sqlQuery;
 	ctlAuiNotebook *outputPane;
 	ctlSQLResult *sqlResult;
-	ExplainCanvas *explainCanvas;
 	wxTextCtrl *msgResult, *msgHistory;
 	wxBitmapComboBox *cbConnection;
 	wxTextCtrl *scratchPad;
@@ -135,6 +132,7 @@ private:
 	wxButton *btnDeleteAll;
 	wxArrayString histoQueries;
 
+	ctlAuiNotebook *sqlNotebook;
 	ctlAuiNotebook *sqlQueryBook;  //container for all SQL tabs
 	size_t sqlQueryCounter;  //for initial tab names
 	ctlSQLBox *sqlQueryExec;  //currently executing SQL tab
@@ -150,19 +148,6 @@ private:
 	wxStringOutputStream pgsStringOutput;
 	wxTextOutputStream pgsOutput;
 	pgScriptTimer *pgsTimer;
-
-	//GQB related
-	void OnChangeNotebook(wxAuiNotebookEvent &event);
-	void OnAdjustSizesTimer(wxTimerEvent &event);
-	void OnResizeHorizontally(wxSplitterEvent &event);
-	void adjustGQBSizes();
-	bool updateFromGqb(bool executing);
-	ctlAuiNotebook *sqlNotebook;
-	gqbModel *model;
-	gqbController *controller;
-	bool firstTime;
-	bool gqbUpdateRunning;
-	wxTimer *adjustSizesTimer;
 
 	// Our connection
 	pgConn *conn;
@@ -193,7 +178,6 @@ private:
 	void OnOpen(wxCommandEvent &event);
 	void OnSave(wxCommandEvent &event);
 	void OnSaveAs(wxCommandEvent &event);
-	void SaveExplainAsImage(wxCommandEvent &event);
 	void OnExport(wxCommandEvent &event);
 	void OnExit(wxCommandEvent &event);
 	void OnCut(wxCommandEvent &event);

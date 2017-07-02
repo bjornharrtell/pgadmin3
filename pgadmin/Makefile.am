@@ -36,17 +36,13 @@ TMP_ui =
 include agent/module.mk
 include ctl/module.mk
 include db/module.mk
-include dd/module.mk
 include debugger/module.mk
 include dlg/module.mk
 include frm/module.mk
 include include/module.mk
-include ogl/module.mk
 include pgscript/module.mk
 include schema/module.mk
 include slony/module.mk
-include gqb/module.mk
-include hotdraw/module.mk
 include ui/module.mk
 include utils/module.mk
 include libssh2/module.mk

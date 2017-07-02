@@ -64,7 +64,7 @@ AC_DEFUN([SET_WX_VERSION],
 		fi
 	],
 	[
-		WX_VERSION="2.8"
+		WX_VERSION="3.0"
 	])
 ])
 
