@@ -1686,6 +1686,15 @@
     <ClCompile Include="dlg\dlgMoveTablespace.cpp">
       <Filter>dlg</Filter>
     </ClCompile>
+    <ClCompile Include="schema\pgAccessMethod.cpp">
+      <Filter>schema</Filter>
+    </ClCompile>
+    <ClCompile Include="schema\pgPolicy.cpp">
+      <Filter>schema</Filter>
+    </ClCompile>
+    <ClCompile Include="dlg\dlgPolicy.cpp">
+      <Filter>dlg</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="agent\module.mk">
@@ -4517,6 +4526,18 @@
       <Filter>include\images</Filter>
     </png2c>
     <png2c Include="include\images\query_rollback.png">
+      <Filter>include\images</Filter>
+    </png2c>
+    <png2c Include="include\images\access-method.png">
+      <Filter>include\images</Filter>
+    </png2c>
+    <png2c Include="include\images\access-methods.png">
+      <Filter>include\images</Filter>
+    </png2c>
+    <png2c Include="include\images\policies.png">
+      <Filter>include\images</Filter>
+    </png2c>
+    <png2c Include="include\images\policy.png">
       <Filter>include\images</Filter>
     </png2c>
   </ItemGroup>

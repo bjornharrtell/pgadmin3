@@ -857,6 +857,7 @@
     <ClCompile Include="dlg\dlgOperator.cpp" />
     <ClCompile Include="dlg\dlgPackage.cpp" />
     <ClCompile Include="dlg\dlgPgpassConfig.cpp" />
+    <ClCompile Include="dlg\dlgPolicy.cpp" />
     <ClCompile Include="dlg\dlgProperty.cpp" />
     <ClCompile Include="dlg\dlgReassignDropOwned.cpp" />
     <ClCompile Include="dlg\dlgResourceGroup.cpp" />
@@ -2190,6 +2191,7 @@
     <ClCompile Include="schema\gpExtTable.cpp" />
     <ClCompile Include="schema\gpPartition.cpp" />
     <ClCompile Include="schema\gpResQueue.cpp" />
+    <ClCompile Include="schema\pgAccessMethod.cpp" />
     <ClCompile Include="schema\pgAggregate.cpp" />
     <ClCompile Include="schema\pgCast.cpp" />
     <ClCompile Include="schema\pgCatalogObject.cpp" />
@@ -2217,6 +2219,7 @@
     <ClCompile Include="schema\pgOperator.cpp" />
     <ClCompile Include="schema\pgOperatorClass.cpp" />
     <ClCompile Include="schema\pgOperatorFamily.cpp" />
+    <ClCompile Include="schema\pgPolicy.cpp" />
     <ClCompile Include="schema\pgRole.cpp" />
     <ClCompile Include="schema\pgRule.cpp" />
     <ClCompile Include="schema\pgSchema.cpp" />
@@ -3244,6 +3247,8 @@
     <ClInclude Include="include\hotdraw\utilities\hdRemoveDeleteDialog.h" />
   </ItemGroup>
   <ItemGroup>
+    <png2c Include="include\images\access-method.png" />
+    <png2c Include="include\images\access-methods.png" />
     <png2c Include="include\images\aggregate-sm.png" />
     <png2c Include="include\images\aggregate.png" />
     <png2c Include="include\images\aggregates.png" />
@@ -3458,6 +3463,8 @@
     <png2c Include="include\images\pgAdmin3-32.png" />
     <png2c Include="include\images\pgAdmin3.png" />
     <png2c Include="include\images\plugins.png" />
+    <png2c Include="include\images\policies.png" />
+    <png2c Include="include\images\policy.png" />
     <png2c Include="include\images\primarykey.png" />
     <png2c Include="include\images\procedure.png" />
     <png2c Include="include\images\procedures.png" />
