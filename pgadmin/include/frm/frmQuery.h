@@ -161,6 +161,7 @@ private:
 
 	void OnChangeStc(wxStyledTextEvent &event);
 	void OnPositionStc(wxStyledTextEvent &event);
+	void DoUpdatePositionStc(const wxStyledTextEvent &event);
 	void OnClose(wxCloseEvent &event);
 	void OnSetFocus(wxFocusEvent &event);
 	void OnContents(wxCommandEvent &event);
